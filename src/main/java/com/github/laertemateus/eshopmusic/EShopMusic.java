@@ -1,16 +1,10 @@
 package com.github.laertemateus.eshopmusic;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.SQLException;
-import javax.swing.plaf.metal.MetalIconFactory;
 
 /**
  * Inicia o sistema
@@ -33,25 +27,26 @@ public class EShopMusic {
      * Sincroniza todas as migrações do banco de dados
      */
     private static void atualizaBD() throws SQLException, IOException, URISyntaxException {
-        Path path = Paths.get(EShopMusic.class.getResource("sql").toURI());
+        BufferedReader readerPasta = new BufferedReader(new InputStreamReader(EShopMusic.class.getResourceAsStream("sql")));
         BD bd = BD.getInstance();
+        
         // Construção da tabela migração se necessário
         bd.query("CREATE TABLE IF NOT EXISTS migracoes(arquivo TEXT UNIQUE)");
         
-        for(Path p : Files.newDirectoryStream(path)) {
-            if(!bd.query("SELECT 1 FROM migracoes WHERE arquivo = ?", p.getFileName()).next()) {
+        while(readerPasta.ready()) {
+            String arquivo = readerPasta.readLine();
+            
+            if(!bd.query("SELECT 1 FROM migracoes WHERE arquivo = ?", arquivo).next()) {
                 StringBuilder builder = new StringBuilder();
-                FileInputStream fis = new FileInputStream(p.toFile());
-                InputStreamReader isr = new InputStreamReader(fis);
-                BufferedReader reader = new BufferedReader(isr);
+                BufferedReader arquivoReader = new BufferedReader(new InputStreamReader(EShopMusic.class.getResourceAsStream("sql/"+arquivo)));
                 
-                while(reader.ready()) {
-                    builder.append(reader.readLine());
+                while(arquivoReader.ready()) {
+                    builder.append(arquivoReader.readLine());
                 }
                 
                 // Executa o conteúdo do arquivo SQL e adiciona nas migrações
                 bd.query(builder.toString());
-                bd.query("INSERT INTO migracoes VALUES(?)", p.getFileName());
+                bd.query("INSERT INTO migracoes VALUES(?)", arquivo);
             }
         }
         
